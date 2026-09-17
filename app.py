@@ -9,6 +9,11 @@ st.set_page_config(
     layout="wide"
 )
 
+# إنشاء مجلد لحفظ الملفات محلياً على السيرفر إذا لم يكن موجوداً
+UPLOAD_DIR = "saved_files"
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
+
 # النص الأساسي للقرار الوزاري رقم 151
 DEFAULT_DECREE_TEXT = """
 جمهورية مصر العربية
@@ -54,34 +59,58 @@ DEFAULT_DECREE_TEXT = """
 يجب حضور التلميذ بنسبة لا تقل عن (70%) للفصلين الدراسيين. يُوقف قيد التلميذ المنقطع لمدة عامين دراسيين متتاليين. يخصص يوم واحد أسبوعياً في الإجازة الصيفية للأنشطة اللاصفية. يعمل بالقرار ويلغى كل ما يخالفه.
 """
 
-def extract_text_from_uploaded_pdf(uploaded_file):
-    """استخراج النصوص من ملف PDF مرفوع بواسطة المستخدم"""
-    reader = pypdf.PdfReader(uploaded_file)
-    text = ""
-    for i, page in enumerate(reader.pages):
-        text += f"\n--- صفحة {i+1} ---\n" + (page.extract_text() or "")
-    return text
+def extract_text_from_pdf_path(file_path):
+    """استخراج النصوص من مسار ملف PDF محلي"""
+    try:
+        reader = pypdf.PdfReader(file_path)
+        text = ""
+        for i, page in enumerate(reader.pages):
+            text += f"\n--- صفحة {i+1} ---\n" + (page.extract_text() or "")
+        return text
+    except Exception as e:
+        return f"[خطأ في قراءة الملف: {e}]"
 
 # تصميم واجهة المستخدم
-st.title("📚 مساعد القرارات والملفات التفاعلي")
-st.markdown("نظام ذكي للبحث في القرار الوزاري 151 وأي ملفات إضافية تقوم برفعها بنفسك.")
+st.title("📚 مساعد القرارات والملفات التفاعلي (مع الحفظ)")
+st.markdown("نظام ذكي للبحث في القرار الوزاري 151 والملفات المحفوظة على السيرفر.")
 
-# إضافة زر لرفع ملفات PDF إضافية من الجانب
-st.sidebar.header("📂 رفع ملفات إضافية للبحث")
+# لوحة التحكم الجانبية لرفع وحفظ الملفات
+st.sidebar.header("📂 إدارة وحفظ الملفات")
 uploaded_files = st.sidebar.file_uploader(
-    "قم برفع ملفات PDF إضافية (قرارات، لوائح، كتب):", 
+    "رفع ملفات PDF جديدة لحفظها:", 
     type=["pdf"], 
     accept_multiple_files=True
 )
 
-# تجميع النص الكلي (القرار الأساسي + أي ملفات مرفوعة)
+# حفظ الملفات المرفوعة جديدة في المجلد المحلي
+if uploaded_files:
+    for uploaded_file in uploaded_files:
+        file_path = os.path.join(UPLOAD_DIR, uploaded_file.name)
+        # حفظ الملف فعلياً على القرص للسيرفر إذا لم يكن موجوداً
+        if not os.path.exists(file_path):
+            with open(file_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            st.sidebar.success(f"تم حفظ الملف: {uploaded_file.name}")
+
+# تجميع النص الكلي (القرار الأساسي + جميع الملفات المخزنة في المجلد المحلي)
 combined_text = DEFAULT_DECREE_TEXT
 
-if uploaded_files:
-    for file in uploaded_files:
-        extra_text = extract_text_from_uploaded_pdf(file)
-        combined_text += f"\n\n=== محتوى الملف المرفوع: {file.name} ===\n" + extra_text
-        st.sidebar.success(f"تم بنجاح قراءة الملف: {file.name}")
+# قراءة جميع الملفات المخزنة في المجلد المحلي تلقائياً
+saved_files_list = os.listdir(UPLOAD_DIR)
+if saved_files_list:
+    st.sidebar.subheader("📄 الملفات المحفوظة حالياً:")
+    for filename in saved_files_list:
+        if filename.endswith(".pdf"):
+            st.sidebar.text(f"• {filename}")
+            file_path = os.path.join(UPLOAD_DIR, filename)
+            extra_text = extract_text_from_pdf_path(file_path)
+            combined_text += f"\n\n=== محتوى الملف المحفوظ: {filename} ===\n" + extra_text
+
+    # زر لحذف كافة الملفات المحفوظة إذا أردت تصفيتها مستقبلاً
+    if st.sidebar.button("🗑️ حذف جميع الملفات المحفوظة"):
+        for filename in saved_files_list:
+            os.remove(os.path.join(UPLOAD_DIR, filename))
+        st.rerun()
 
 # دالة البحث المرن
 def search_text(text, keyword):
@@ -102,7 +131,7 @@ def search_text(text, keyword):
     return results
 
 # شريط البحث
-query = st.text_input("🔍 اطرح سؤالاً أو اكتب كلمة للبحث (في القرار الأساسي والملفات المرفوعة):")
+query = st.text_input("🔍 اطرح سؤالاً أو اكتب كلمة للبحث (في القرار والملفات المحفوظة):")
 
 if query:
     matches = search_text(combined_text, query)
@@ -116,5 +145,5 @@ if query:
         st.warning("لم يتم العثور على نتائج مطابقة لهذا البحث.")
 
 # عرض النص المجمع
-with st.expander("📖 عرض كافة النصوص المتاحة للبحث (القرار + الملفات المرفوعة)"):
+with st.expander("📖 عرض كافة النصوص المتاحة للبحث (القرار + الملفات المحفوظة)"):
     st.text_area("النصوص الشاملة", combined_text, height=400)
