@@ -33,7 +33,7 @@ class DecreeQASystem:
                 results.append(line)
         return results
 
-# مسار ملف القرار (يجب أن يكون الملف بنفس المجلد على جيت هب)
+# مسار ملف القرار
 PDF_FILENAME = "قرار 151 - الحلقة الابتدائية (1).pdf"
 
 @st.cache_resource
@@ -44,12 +44,11 @@ decree_system = load_decree_system()
 
 # تصميم واجهة المستخدم
 st.title("📚 نظام الاستعلام الآلي - القرار الوزاري رقم (151)")
-st.markdown("نظام تفاعلي للبحث في مواد وأحكام القرار الوزاري الخاص بنظام الدراسة والتقييم للحلقة الابتدائية (2026/2027)[cite: 1].")
+st.markdown("نظام تفاعلي للبحث في مواد وأحكام القرار الوزاري الخاص بنظام الدراسة والتقييم للحلقة الابتدائية.")
 
 if not decree_system.full_text:
     st.error(f"⚠️ تنبيه: لم يتم العثور على ملف PDF باسم ({PDF_FILENAME}) في المجلد. تأكد من رفعه بجانب هذا الملف على مستودع GitHub.")
 else:
-    # شريط البحث الجانبي أو الأساسي
     query = st.text_input("🔍 اطرح سؤالاً أو اكتب كلمة مفتاحية للبحث (مثال: الحضور، درجات، التقييم الأسبوعي، التربية الدينية):")
     
     if query:
@@ -57,7 +56,7 @@ else:
         st.subheader(f"نتائج البحث عن: ({query})")
         
         if matches:
-            st.success(تم العثور على {len.matches if isinstance(matches, list) else len(matches)} نتيجة مطابقة:)
+            st.success(f"تم العثور على {len(matches)} نتيجة مطابقة:")
             for idx, match in enumerate(matches, 1):
                 st.info(f"{idx}. {match}")
         else:
