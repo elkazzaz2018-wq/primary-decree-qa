@@ -4,7 +4,7 @@ import os
 
 # إعداد صفحة الويب
 st.set_page_config(
-    page_title="مساعد القرارات الوزارية والملفات",
+    page_title="مساعد القرارات والملفات التفاعلي",
     page_icon="📚",
     layout="wide"
 )
@@ -81,7 +81,7 @@ if uploaded_files:
     for file in uploaded_files:
         extra_text = extract_text_from_uploaded_pdf(file)
         combined_text += f"\n\n=== محتوى الملف المرفوع: {file.name} ===\n" + extra_text
-        st.sidebar.success(تم بنجاح قراءة الملف: {file.name})
+        st.sidebar.success(f"تم بنجاح قراءة الملف: {file.name}")
 
 # دالة البحث المرن
 def search_text(text, keyword):
